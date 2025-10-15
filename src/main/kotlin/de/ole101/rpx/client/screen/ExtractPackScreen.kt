@@ -12,6 +12,7 @@ import kotlinx.coroutines.launch
 import net.fabricmc.api.EnvType
 import net.fabricmc.api.Environment
 import net.minecraft.client.MinecraftClient
+import net.minecraft.client.gui.Click
 import net.minecraft.client.gui.DrawContext
 import net.minecraft.client.gui.screen.Screen
 import net.minecraft.client.gui.widget.ButtonWidget
@@ -144,16 +145,19 @@ class ExtractPackScreen(private val parent: Screen) : Screen(Text.translatable("
         )
     }
 
-    override fun mouseClicked(mouseX: Double, mouseY: Double, button: Int): Boolean {
+    override fun mouseClicked(click: Click?, doubled: Boolean): Boolean {
+        if (click == null) return super.mouseClicked(click, doubled)
+
         if (extractionState.isExtracting.value) return true // block interaction while extracting
 
-        val hovered = listRenderer.getHoveredIndex(mouseX.toInt(), mouseY.toInt(), width, serverPackProfiles.size)
+        val hovered = listRenderer.getHoveredIndex(click.x.toInt(), click.y.toInt(), width, serverPackProfiles.size)
         if (hovered in serverPackProfiles.indices) {
             selectedIndex = hovered
             updateButtonStates()
             return true
         }
-        return super.mouseClicked(mouseX, mouseY, button)
+
+        return super.mouseClicked(click, doubled)
     }
 
     override fun resize(client: MinecraftClient?, width: Int, height: Int) {
