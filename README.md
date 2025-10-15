@@ -1,6 +1,6 @@
 # ResourcePackExtractor
 
-**ResourcePackExtractor** is a Fabric mod (1.21.8) based on [MineCraft Resource Pack eXtractor (MCRPX)](https://github.com/Speedy11CZ/MCRPX).  
+**ResourcePackExtractor** is a Fabric mod (1.21.10) based on [MineCraft Resource Pack eXtractor (MCRPX)](https://github.com/Speedy11CZ/MCRPX).  
 It allows you to extract server resource packs directly in-game.
 
 Unlike normal unpacking, this mod can also bypass corrupted resource packs, which are often used by servers to protect their packs.
