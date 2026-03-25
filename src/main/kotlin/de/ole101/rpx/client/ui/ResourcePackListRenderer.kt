@@ -1,17 +1,18 @@
 package de.ole101.rpx.client.ui
 
 import de.ole101.rpx.util.ResourcePackUtil.getSafeDisplayName
-import net.minecraft.client.font.TextRenderer
-import net.minecraft.client.gui.DrawContext
-import net.minecraft.resource.ResourcePackProfile
-import net.minecraft.text.Text
+import net.minecraft.client.gui.Font
+import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.network.chat.Component
+import net.minecraft.network.chat.Component.literal
+import net.minecraft.server.packs.repository.Pack
 
 class ResourcePackListRenderer {
 
     fun render(
-        context: DrawContext,
-        textRenderer: TextRenderer,
-        profiles: List<ResourcePackProfile>,
+        graphics: GuiGraphics,
+        font: Font,
+        packs: List<Pack>,
         selectedIndex: Int,
         width: Int,
         height: Int
@@ -22,19 +23,19 @@ class ResourcePackListRenderer {
         val right = width / 2 + 150
 
         // background
-        context.fill(left - 2, top - 2, right + 2, bottom + 2, 0x88000000.toInt())
+        graphics.fill(left - 2, top - 2, right + 2, bottom + 2, 0x88000000.toInt())
 
-        profiles.forEachIndexed { index, profile ->
+        packs.forEachIndexed { index, profile ->
             val rowTop = top + index * 14
             if (rowTop + 14 > bottom) return@forEachIndexed
 
             // current selection
             if (index == selectedIndex) {
-                context.fill(left, rowTop, right, rowTop + 14, 0x55FFFFFF)
+                graphics.fill(left, rowTop, right, rowTop + 14, 0x55FFFFFF)
             }
 
-            val name: Text = Text.literal(getSafeDisplayName(profile))
-            context.drawTextWithShadow(textRenderer, name, left + 4, rowTop + 3, -1)
+            val name: Component = literal(getSafeDisplayName(profile))
+            graphics.drawString(font, name, left + 4, rowTop + 3, -1)
         }
     }
 

@@ -1,17 +1,17 @@
 package de.ole101.rpx.client.ui
 
 import de.ole101.rpx.util.formatFileSize
-import net.minecraft.client.font.TextRenderer
-import net.minecraft.client.gui.DrawContext
-import net.minecraft.text.Text
+import net.minecraft.client.gui.Font
+import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.network.chat.Component.literal
 import java.io.File
 import kotlin.math.roundToInt
 
 class ProgressPanelRenderer {
 
     fun render(
-        context: DrawContext,
-        textRenderer: TextRenderer,
+        graphics: GuiGraphics,
+        font: Font,
         width: Int,
         height: Int,
         isExtracting: Boolean,
@@ -29,7 +29,7 @@ class ProgressPanelRenderer {
         val panelRight = width / 2 + 150
 
         // background
-        context.fill(panelLeft, panelTop, panelRight, panelTop + 46, 0xAA000000.toInt())
+        graphics.fill(panelLeft, panelTop, panelRight, panelTop + 46, 0xAA000000.toInt())
 
         val statusY = panelTop + 6
         val progressBarY = panelTop + 20
@@ -41,20 +41,20 @@ class ProgressPanelRenderer {
             else -> message ?: "Preparing..."
         }
         val textColor = if (error != null) 0xFF5555FF.toInt() else 0xFFFFFFFF.toInt()
-        context.drawCenteredTextWithShadow(textRenderer, Text.literal(displayMessage), width / 2, statusY, textColor)
+        graphics.drawCenteredString(font, literal(displayMessage), width / 2, statusY, textColor)
 
         if (totalBytes > 0) {
-            renderProgressBar(context, panelLeft, panelRight, progressBarY, extractedBytes, totalBytes)
-            renderProgressText(context, textRenderer, width / 2, percentY, extractedBytes, totalBytes)
+            renderProgressBar(graphics, panelLeft, panelRight, progressBarY, extractedBytes, totalBytes)
+            renderProgressText(graphics, font, width / 2, percentY, extractedBytes, totalBytes)
         }
 
         if (currentFile != null && error == null && !isCompleted) {
-            renderCurrentFile(context, textRenderer, width / 2, panelTop + 46 - 10, currentFile)
+            renderCurrentFile(graphics, font, width / 2, panelTop + 46 - 10, currentFile)
         }
     }
 
     private fun renderProgressBar(
-        context: DrawContext,
+        graphics: GuiGraphics,
         panelLeft: Int,
         panelRight: Int,
         progressBarY: Int,
@@ -66,17 +66,17 @@ class ProgressPanelRenderer {
         val barBottom = progressBarY + 8
 
         // background
-        context.fill(barLeft, progressBarY, barRight, barBottom, 0xFF222222.toInt())
+        graphics.fill(barLeft, progressBarY, barRight, barBottom, 0xFF222222.toInt())
 
         // fill
         val fraction = if (totalBytes > 0) (extractedBytes.toDouble() / totalBytes.toDouble()).coerceIn(0.0, 1.0) else 0.0
         val filled = barLeft + ((barRight - barLeft) * fraction).roundToInt()
-        context.fill(barLeft, progressBarY, filled, barBottom, 0xFF55AA55.toInt())
+        graphics.fill(barLeft, progressBarY, filled, barBottom, 0xFF55AA55.toInt())
     }
 
     private fun renderProgressText(
-        context: DrawContext,
-        textRenderer: TextRenderer,
+        graphics: GuiGraphics,
+        font: Font,
         centerX: Int,
         y: Int,
         extractedBytes: Long,
@@ -88,12 +88,12 @@ class ProgressPanelRenderer {
         } else {
             formatFileSize(extractedBytes)
         }
-        context.drawCenteredTextWithShadow(textRenderer, Text.literal(percentText), centerX, y, 0xA0FFFFFF.toInt())
+        graphics.drawCenteredString(font, literal(percentText), centerX, y, 0xA0FFFFFF.toInt())
     }
 
     private fun renderCurrentFile(
-        context: DrawContext,
-        textRenderer: TextRenderer,
+        graphics: GuiGraphics,
+        font: Font,
         centerX: Int,
         y: Int,
         currentFile: String
@@ -101,6 +101,6 @@ class ProgressPanelRenderer {
         val separator = File.separatorChar
         val filename = currentFile.substringAfterLast(separator).substringAfterLast('/')
         val truncatedFilename = filename.take(40)
-        context.drawCenteredTextWithShadow(textRenderer, Text.literal(truncatedFilename), centerX, y, 0x80FFFFFF.toInt())
+        graphics.drawCenteredString(font, literal(truncatedFilename), centerX, y, 0x80FFFFFF.toInt())
     }
 }
