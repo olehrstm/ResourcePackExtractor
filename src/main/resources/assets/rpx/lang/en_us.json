@@ -1,5 +1,11 @@
 {
     "rpx.pack.extract": "Extract Pack",
     "rpx.pack.select": "Select Pack",
-    "rpx.pack.open_folder": "Open Folder"
+    "rpx.pack.open_folder": "Open Folder",
+    "rpx.status.starting": "Preparing extraction...",
+    "rpx.status.extracting": "Extracting %s",
+    "rpx.status.completed": "Extracted %s files",
+    "rpx.status.completed_with_skips": "Extracted %s files, skipped %s",
+    "rpx.status.error": "Error: %s",
+    "rpx.error.unknown": "Unknown error"
 }

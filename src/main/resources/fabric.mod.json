@@ -3,8 +3,10 @@
     "id": "rpx",
     "version": "${version}",
     "name": "ResourcePackExtractor",
-    "description": "Fabric 1.21.10 mod that allows extracting server resource packs in-game.",
-    "authors": ["ole101"],
+    "description": "Fabric 1.21.11 mod that allows extracting server resource packs in-game.",
+    "authors": [
+        "ole101"
+    ],
     "contact": {},
     "license": "MIT",
     "icon": "assets/rpx/icon.png",
@@ -12,9 +14,6 @@
     "entrypoints": {
         "client": [
             "de.ole101.rpx.client.ResourcePackExtractorClient"
-        ],
-        "main": [
-            "de.ole101.rpx.ResourcePackExtractor"
         ]
     },
     "mixins": [

@@ -1,6 +1,7 @@
 package de.ole101.rpx.util
 
 import java.io.File
+import java.util.Locale
 
 fun File.getHumanReadableSize(): String {
     val size = length()
@@ -17,5 +18,5 @@ fun formatFileSize(size: Long): String {
         unitIndex++
     }
 
-    return "%.2f %s".format(bytes, units[unitIndex])
+    return String.format(Locale.ROOT, "%.2f %s", bytes, units[unitIndex])
 }

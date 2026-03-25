@@ -1,17 +1,22 @@
 package de.ole101.rpx.client.ui
 
 import de.ole101.rpx.util.formatFileSize
-import net.minecraft.client.font.TextRenderer
-import net.minecraft.client.gui.DrawContext
-import net.minecraft.text.Text
+import net.minecraft.client.gui.Font
+import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.network.chat.Component
+import net.minecraft.network.chat.Component.literal
+import net.minecraft.util.FormattedCharSequence
 import java.io.File
 import kotlin.math.roundToInt
 
 class ProgressPanelRenderer {
+    companion object {
+        private const val MAX_STATUS_LINES = 2
+    }
 
     fun render(
-        context: DrawContext,
-        textRenderer: TextRenderer,
+        graphics: GuiGraphics,
+        font: Font,
         width: Int,
         height: Int,
         isExtracting: Boolean,
@@ -19,42 +24,49 @@ class ProgressPanelRenderer {
         extractedBytes: Long,
         totalBytes: Long,
         currentFile: String?,
-        message: String?,
-        error: String?
+        message: Component?,
+        error: Component?
     ) {
         if (!isExtracting && !isCompleted && error == null) return
 
-        val panelTop = height - 70 - 46
         val panelLeft = width / 2 - 150
         val panelRight = width / 2 + 150
+        val contentWidth = panelRight - panelLeft - 20
+        val messageLines = (error ?: message)
+            ?.let { font.split(it, contentWidth) }
+            .orEmpty()
+            .take(MAX_STATUS_LINES)
+        val visibleLines: List<FormattedCharSequence> = messageLines
+        val panelHeight = if (visibleLines.size > 1) 58 else 46
+        val panelTop = height - 70 - panelHeight
 
         // background
-        context.fill(panelLeft, panelTop, panelRight, panelTop + 46, 0xAA000000.toInt())
+        graphics.fill(panelLeft, panelTop, panelRight, panelTop + panelHeight, 0xAA000000.toInt())
 
         val statusY = panelTop + 6
-        val progressBarY = panelTop + 20
+        val progressBarY = panelTop + 12 + visibleLines.size * font.lineHeight
         val percentY = progressBarY + 12
 
-        val displayMessage = when {
-            error != null -> "Error: $error".take(60)
-            isCompleted -> message ?: "Completed"
-            else -> message ?: "Preparing..."
+        val textColor = if (error != null) 0xFFFF5555.toInt() else 0xFFFFFFFF.toInt()
+        visibleLines.forEachIndexed { index, line ->
+            graphics.drawCenteredString(font, line, width / 2, statusY + index * font.lineHeight, textColor)
         }
-        val textColor = if (error != null) 0xFF5555FF.toInt() else 0xFFFFFFFF.toInt()
-        context.drawCenteredTextWithShadow(textRenderer, Text.literal(displayMessage), width / 2, statusY, textColor)
 
         if (totalBytes > 0) {
-            renderProgressBar(context, panelLeft, panelRight, progressBarY, extractedBytes, totalBytes)
-            renderProgressText(context, textRenderer, width / 2, percentY, extractedBytes, totalBytes)
+            renderProgressBar(graphics, panelLeft, panelRight, progressBarY, extractedBytes, totalBytes)
+        }
+
+        if (totalBytes > 0 || extractedBytes > 0) {
+            renderProgressText(graphics, font, width / 2, percentY, extractedBytes, totalBytes)
         }
 
         if (currentFile != null && error == null && !isCompleted) {
-            renderCurrentFile(context, textRenderer, width / 2, panelTop + 46 - 10, currentFile)
+            renderCurrentFile(graphics, font, width / 2, panelTop + panelHeight - 10, currentFile)
         }
     }
 
     private fun renderProgressBar(
-        context: DrawContext,
+        graphics: GuiGraphics,
         panelLeft: Int,
         panelRight: Int,
         progressBarY: Int,
@@ -66,17 +78,17 @@ class ProgressPanelRenderer {
         val barBottom = progressBarY + 8
 
         // background
-        context.fill(barLeft, progressBarY, barRight, barBottom, 0xFF222222.toInt())
+        graphics.fill(barLeft, progressBarY, barRight, barBottom, 0xFF222222.toInt())
 
         // fill
         val fraction = if (totalBytes > 0) (extractedBytes.toDouble() / totalBytes.toDouble()).coerceIn(0.0, 1.0) else 0.0
         val filled = barLeft + ((barRight - barLeft) * fraction).roundToInt()
-        context.fill(barLeft, progressBarY, filled, barBottom, 0xFF55AA55.toInt())
+        graphics.fill(barLeft, progressBarY, filled, barBottom, 0xFF55AA55.toInt())
     }
 
     private fun renderProgressText(
-        context: DrawContext,
-        textRenderer: TextRenderer,
+        graphics: GuiGraphics,
+        font: Font,
         centerX: Int,
         y: Int,
         extractedBytes: Long,
@@ -88,12 +100,12 @@ class ProgressPanelRenderer {
         } else {
             formatFileSize(extractedBytes)
         }
-        context.drawCenteredTextWithShadow(textRenderer, Text.literal(percentText), centerX, y, 0xA0FFFFFF.toInt())
+        graphics.drawCenteredString(font, literal(percentText), centerX, y, 0xA0FFFFFF.toInt())
     }
 
     private fun renderCurrentFile(
-        context: DrawContext,
-        textRenderer: TextRenderer,
+        graphics: GuiGraphics,
+        font: Font,
         centerX: Int,
         y: Int,
         currentFile: String
@@ -101,6 +113,6 @@ class ProgressPanelRenderer {
         val separator = File.separatorChar
         val filename = currentFile.substringAfterLast(separator).substringAfterLast('/')
         val truncatedFilename = filename.take(40)
-        context.drawCenteredTextWithShadow(textRenderer, Text.literal(truncatedFilename), centerX, y, 0x80FFFFFF.toInt())
+        graphics.drawCenteredString(font, literal(truncatedFilename), centerX, y, 0x80FFFFFF.toInt())
     }
 }

@@ -1,55 +1,56 @@
 package de.ole101.rpx.client.screen
 
+import de.ole101.rpx.client.controller.ExtractionController
 import de.ole101.rpx.client.state.ExtractionState
 import de.ole101.rpx.client.ui.ProgressPanelRenderer
-import de.ole101.rpx.client.ui.ResourcePackListRenderer
-import de.ole101.rpx.coroutineScope
-import de.ole101.rpx.extraction.ExtractionEvent
-import de.ole101.rpx.util.Logger
+import de.ole101.rpx.client.ui.ResourcePackSelectionList
 import de.ole101.rpx.util.ResourcePackUtil
-import de.ole101.rpx.util.ZipUtil
-import kotlinx.coroutines.launch
 import net.fabricmc.api.EnvType
 import net.fabricmc.api.Environment
-import net.minecraft.client.MinecraftClient
-import net.minecraft.client.gui.Click
-import net.minecraft.client.gui.DrawContext
-import net.minecraft.client.gui.screen.Screen
-import net.minecraft.client.gui.widget.ButtonWidget
-import net.minecraft.resource.ResourcePackProfile
-import net.minecraft.text.Text
+import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.components.Button
+import net.minecraft.client.gui.screens.Screen
+import net.minecraft.network.chat.Component.translatable
+import net.minecraft.server.packs.repository.Pack
 import net.minecraft.util.Util
 import java.io.File
+import java.nio.file.Files
 
 @Environment(EnvType.CLIENT)
-class ExtractPackScreen(private val parent: Screen) : Screen(Text.translatable("rpx.pack.extract")) {
+class ExtractPackScreen(private val parent: Screen) : Screen(translatable("rpx.pack.extract")) {
 
-    private var serverPackProfiles: List<ResourcePackProfile> = emptyList()
-    private var selectedIndex: Int = -1
-    private lateinit var runDirectory: File
+    private var serverPacks: List<Pack> = emptyList()
+    private lateinit var gameDirectory: File
+    private lateinit var extractionController: ExtractionController
+    private lateinit var selectionList: ResourcePackSelectionList
 
-    private var lastExtractionDir: File? = null
-    private var selectButton: ButtonWidget? = null
-    private var openFolderButton: ButtonWidget? = null
-
-    private var doneButton: ButtonWidget? = null
+    private var selectButton: Button? = null
+    private var openFolderButton: Button? = null
     private val extractionState = ExtractionState()
-    private val listRenderer = ResourcePackListRenderer()
     private val progressRenderer = ProgressPanelRenderer()
 
     override fun init() {
         initializeData()
+        createSelectionList()
         createButtons()
         updateButtonStates()
     }
 
     private fun initializeData() {
-        runDirectory = client?.runDirectory ?: return
+        gameDirectory = minecraft.gameDirectory
+        if (!::extractionController.isInitialized) {
+            extractionController = ExtractionController(minecraft, gameDirectory, extractionState, ::updateButtonStates)
+        }
 
-        serverPackProfiles = client?.resourcePackManager?.enabledProfiles
-            ?.let { ResourcePackUtil.filterExtractableProfiles(it.toList()) }
-            ?: emptyList()
-        selectedIndex = -1
+        serverPacks = minecraft.resourcePackRepository.selectedPacks.let { ResourcePackUtil.filterExtractableProfiles(it.toList()) }
+    }
+
+    private fun createSelectionList() {
+        val previousSelection = if (::selectionList.isInitialized) selectionList.getSelectedPack() else null
+        selectionList = addRenderableWidget(
+            ResourcePackSelectionList(minecraft, width, height - 70, 30, ::updateButtonStates)
+        )
+        selectionList.setPacks(serverPacks, previousSelection)
     }
 
     private fun createButtons() {
@@ -57,121 +58,78 @@ class ExtractPackScreen(private val parent: Screen) : Screen(Text.translatable("
         val y = height - 28
         val startX = width / 2 - totalWidth / 2
 
-        selectButton = addDrawableChild(
-            ButtonWidget.builder(Text.translatable("rpx.pack.select")) { onSelectPressed() }
-                .dimensions(startX, y, 120, 20)
+        selectButton = addRenderableWidget(
+            Button.builder(translatable("rpx.pack.select")) { onSelectPressed() }
+                .bounds(startX, y, 120, 20)
                 .build()
         )
 
-        openFolderButton = addDrawableChild(
-            ButtonWidget.builder(Text.translatable("rpx.pack.open_folder")) { openExtractionFolder() }
-                .dimensions(startX + 120 + 8, y, 120, 20)
+        openFolderButton = addRenderableWidget(
+            Button.builder(translatable("rpx.pack.open_folder")) { openExtractionFolder() }
+                .bounds(startX + 120 + 8, y, 120, 20)
                 .build()
         )
 
-        doneButton = addDrawableChild(
-            ButtonWidget.builder(Text.translatable("gui.done")) { close() }
-                .dimensions(startX + (120 + 8) * 2, y, 120, 20)
+        addRenderableWidget(
+            Button.builder(translatable("gui.done")) { onClose() }
+                .bounds(startX + (120 + 8) * 2, y, 120, 20)
                 .build()
         )
     }
 
     private fun onSelectPressed() {
-        val selectedProfile = getSelectedPackProfile() ?: return
-
-        extractionState.reset()
-        lastExtractionDir = ResourcePackUtil.getExtractionDirectory(selectedProfile, runDirectory)
-
-        coroutineScope.launch {
-            try {
-                val sourceFile = ResourcePackUtil.getSourceFile(selectedProfile, runDirectory)
-                val destDir = ResourcePackUtil.getExtractionDirectory(selectedProfile, runDirectory)
-                ZipUtil.extractZipFlow(sourceFile, destDir).collect { event ->
-                    runOnClientThread {
-                        extractionState.updateFromEvent(event)
-                        updateButtonStates()
-                    }
-                }
-            } catch (e: Exception) {
-                Logger.error("Extraction failed", e)
-                runOnClientThread {
-                    extractionState.updateFromEvent(
-                        ExtractionEvent.Error(e)
-                    )
-                    updateButtonStates()
-                }
-            }
-        }
+        val selectedProfile = getSelectedPack() ?: return
+        extractionController.startExtraction(selectedProfile)
     }
 
     private fun openExtractionFolder() {
-        val dir = lastExtractionDir ?: return
-        if (!dir.exists()) dir.mkdirs()
-        Util.getOperatingSystem().open(dir)
+        val dir = extractionController.lastExtractionDir ?: return
+        Files.createDirectories(dir.toPath())
+        Util.getPlatform().openFile(dir)
     }
 
-    private fun runOnClientThread(action: () -> Unit) {
-        client?.execute(action)
-    }
-
-    private fun getSelectedPackProfile(): ResourcePackProfile? =
-        if (selectedIndex in serverPackProfiles.indices) serverPackProfiles[selectedIndex] else null
+    private fun getSelectedPack(): Pack? = selectionList.getSelectedPack()
 
     private fun updateButtonStates() {
-        selectButton?.active = selectedIndex >= 0 && !extractionState.isExtracting.value
-        openFolderButton?.active = lastExtractionDir != null &&
-                (extractionState.isExtracting.value || extractionState.isCompleted.value || extractionState.error.value != null)
+        val uiState = extractionState.uiState.value
+        selectButton?.active = getSelectedPack() != null && !uiState.isExtracting
+        openFolderButton?.active = extractionController.lastExtractionDir != null && !uiState.isExtracting &&
+                (uiState.isCompleted || uiState.error != null)
     }
 
-    override fun render(context: DrawContext?, mouseX: Int, mouseY: Int, deltaTicks: Float) {
+    override fun render(context: GuiGraphics, mouseX: Int, mouseY: Int, deltaTicks: Float) {
         super.render(context, mouseX, mouseY, deltaTicks)
-        context ?: return
+        val uiState = extractionState.uiState.value
 
-        context.drawCenteredTextWithShadow(textRenderer, title, width / 2, 15, -1)
-
-        // resource pack list
-        listRenderer.render(context, textRenderer, serverPackProfiles, selectedIndex, width, height)
-
-        // progress
+        context.drawCenteredString(font, title, width / 2, 15, -1)
         progressRenderer.render(
-            context, textRenderer, width, height,
-            extractionState.isExtracting.value,
-            extractionState.isCompleted.value,
-            extractionState.extractedBytes.value,
-            extractionState.totalBytes.value,
-            extractionState.currentFile.value,
-            extractionState.message.value,
-            extractionState.error.value
+            context, font, width, height,
+            uiState.isExtracting,
+            uiState.isCompleted,
+            uiState.extractedBytes,
+            uiState.totalBytes,
+            uiState.currentFile,
+            uiState.message,
+            uiState.error
         )
     }
 
-    override fun mouseClicked(click: Click?, doubled: Boolean): Boolean {
-        if (click == null) return super.mouseClicked(click, doubled)
+    override fun resize(width: Int, height: Int) {
+        val previouslySelected = getSelectedPack()
+        super.resize(width, height)
 
-        if (extractionState.isExtracting.value) return true // block interaction while extracting
-
-        val hovered = listRenderer.getHoveredIndex(click.x.toInt(), click.y.toInt(), width, serverPackProfiles.size)
-        if (hovered in serverPackProfiles.indices) {
-            selectedIndex = hovered
-            updateButtonStates()
-            return true
-        }
-
-        return super.mouseClicked(click, doubled)
-    }
-
-    override fun resize(client: MinecraftClient?, width: Int, height: Int) {
-        val previouslySelected = getSelectedPackProfile()
-        super.resize(client, width, height)
-
-        serverPackProfiles = client?.resourcePackManager?.enabledProfiles
-            ?.let { ResourcePackUtil.filterExtractableProfiles(it.toList()) }
-            ?: emptyList()
-        selectedIndex = serverPackProfiles.indexOf(previouslySelected)
+        serverPacks = minecraft.resourcePackRepository.selectedPacks
+            .let { ResourcePackUtil.filterExtractableProfiles(it.toList()) }
+        selectionList.setPacks(serverPacks, previouslySelected)
         updateButtonStates()
     }
 
-    override fun close() {
-        client?.setScreen(parent)
+    override fun removed() {
+        extractionController.dispose()
+        super.removed()
+    }
+
+    override fun onClose() {
+        minecraft.setScreen(parent)
     }
 }

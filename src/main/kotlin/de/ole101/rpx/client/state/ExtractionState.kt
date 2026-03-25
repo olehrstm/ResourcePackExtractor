@@ -4,70 +4,66 @@ import de.ole101.rpx.extraction.ExtractionEvent
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import net.minecraft.network.chat.Component
+import net.minecraft.network.chat.Component.translatable
+import kotlin.math.max
 
 class ExtractionState {
-    private val _isExtracting = MutableStateFlow(false)
-    val isExtracting: StateFlow<Boolean> = _isExtracting.asStateFlow()
-
-    private val _isCompleted = MutableStateFlow(false)
-    val isCompleted: StateFlow<Boolean> = _isCompleted.asStateFlow()
-
-    private val _extractedBytes = MutableStateFlow(0L)
-    val extractedBytes: StateFlow<Long> = _extractedBytes.asStateFlow()
-
-    private val _totalBytes = MutableStateFlow(0L)
-    val totalBytes: StateFlow<Long> = _totalBytes.asStateFlow()
-
-    private val _currentFile = MutableStateFlow<String?>(null)
-    val currentFile: StateFlow<String?> = _currentFile.asStateFlow()
-
-    private val _message = MutableStateFlow<String?>(null)
-    val message: StateFlow<String?> = _message.asStateFlow()
-
-    private val _error = MutableStateFlow<String?>(null)
-    val error: StateFlow<String?> = _error.asStateFlow()
+    private val _uiState = MutableStateFlow(ExtractionUiState())
+    val uiState: StateFlow<ExtractionUiState> = _uiState.asStateFlow()
 
     fun updateFromEvent(event: ExtractionEvent) {
-        when (event) {
-            is ExtractionEvent.Started -> {
-                _isExtracting.value = true
-                _isCompleted.value = false
-                _totalBytes.value = event.totalBytes
-                _extractedBytes.value = 0
-                _message.value = "Starting..."
-                _error.value = null
-            }
+        _uiState.update { currentState ->
+            when (event) {
+                is ExtractionEvent.Started -> currentState.copy(
+                    isExtracting = true,
+                    isCompleted = false,
+                    extractedBytes = 0,
+                    totalBytes = event.totalBytes,
+                    currentFile = null,
+                    message = translatable("rpx.status.starting"),
+                    error = null
+                )
 
-            is ExtractionEvent.Progress -> {
-                _extractedBytes.value = event.bytesProcessed
-                _currentFile.value = event.fileName
-                _message.value = "Extracting ${event.fileName}".take(60)
-            }
+                is ExtractionEvent.Progress -> currentState.copy(
+                    extractedBytes = event.extractedBytes,
+                    currentFile = event.fileName,
+                    message = translatable("rpx.status.extracting", Component.literal(shorten(event.fileName))),
+                    error = null
+                )
 
-            is ExtractionEvent.Message -> {
-                _message.value = event.text
-            }
+                is ExtractionEvent.Error -> currentState.copy(
+                    isExtracting = false,
+                    currentFile = null,
+                    message = null,
+                    error = translatable("rpx.status.error", event.exception.message ?: translatable("rpx.error.unknown"))
+                )
 
-            is ExtractionEvent.Error -> {
-                _error.value = event.exception.message ?: "Unknown error"
-                _isExtracting.value = false
-            }
-
-            is ExtractionEvent.Completed -> {
-                _isExtracting.value = false
-                _isCompleted.value = true
-                _extractedBytes.value = _totalBytes.value
+                is ExtractionEvent.Completed -> currentState.copy(
+                    isExtracting = false,
+                    isCompleted = true,
+                    extractedBytes = event.extractedBytes,
+                    totalBytes = max(currentState.totalBytes, event.extractedBytes),
+                    currentFile = null,
+                    message = completedMessage(event.extractedEntries, event.skippedEntries),
+                    error = null
+                )
             }
         }
     }
 
     fun reset() {
-        _isExtracting.value = false
-        _isCompleted.value = false
-        _extractedBytes.value = 0
-        _totalBytes.value = 0
-        _currentFile.value = null
-        _message.value = null
-        _error.value = null
+        _uiState.value = ExtractionUiState()
     }
+
+    private fun completedMessage(extractedEntries: Int, skippedEntries: Int): Component {
+        return if (skippedEntries > 0) {
+            translatable("rpx.status.completed_with_skips", extractedEntries, skippedEntries)
+        } else {
+            translatable("rpx.status.completed", extractedEntries)
+        }
+    }
+
+    private fun shorten(path: String): String = path.substringAfterLast('/').substringAfterLast('\\').take(60)
 }
