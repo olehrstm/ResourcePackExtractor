@@ -7,6 +7,7 @@ import de.ole101.rpx.extraction.ExtractionSource
 import net.minecraft.server.packs.FilePackResources
 import net.minecraft.server.packs.PathPackResources
 import net.minecraft.server.packs.repository.Pack
+import net.minecraft.server.packs.repository.Pack.ResourcesSupplier
 import net.minecraft.server.packs.repository.PackSource
 import java.io.File
 import java.nio.file.Path
@@ -41,6 +42,7 @@ object ResourcePackUtil {
 
     private fun resolveSource(pack: Pack, runDirectory: Path): ExtractionSource {
         try {
+            resolveSourceFromSupplier(pack)?.let { return it }
             pack.open().use { resources ->
                 when (resources) {
                     is FilePackResources -> return ExtractionSource.Archive(getArchivePath(resources))
@@ -52,6 +54,21 @@ object ResourcePackUtil {
         }
 
         return resolveDownloadedArchive(pack, runDirectory)
+    }
+
+    private fun resolveSourceFromSupplier(pack: Pack): ExtractionSource? {
+        val supplier = findFieldValue(pack, Pack::class.java) { field -> ResourcesSupplier::class.java.isAssignableFrom(field.type) }
+                as? ResourcesSupplier
+            ?: return null
+
+        val content = findFieldValue(supplier, supplier.javaClass) { field -> field.type == File::class.java || field.type == Path::class.java }
+            ?: return null
+
+        return when (content) {
+            is File -> ExtractionSource.Archive(content.toPath())
+            is Path -> if (content.toFile().isDirectory) ExtractionSource.Directory(content) else ExtractionSource.Archive(content)
+            else -> null
+        }
     }
 
     private fun resolveDownloadedArchive(pack: Pack, runDirectory: Path): ExtractionSource.Archive {
@@ -73,26 +90,32 @@ object ResourcePackUtil {
     }
 
     private fun getArchivePath(resources: FilePackResources): Path {
-        val zipAccessField = FilePackResources::class.java.getDeclaredField("zipFileAccess")
-        zipAccessField.isAccessible = true
-
-        val zipAccess = zipAccessField.get(resources)
+        val zipAccess = findFieldValue(resources, FilePackResources::class.java) { field ->
+            !field.type.isPrimitive && field.type.declaredFields.any { nestedField -> nestedField.type == File::class.java }
+        }
             ?: throw InvalidResourcePackException("Archive resource is unavailable")
 
-        val fileField = zipAccess.javaClass.getDeclaredField("file")
-        fileField.isAccessible = true
-
-        val archiveFile = fileField.get(zipAccess) as? File
+        val archiveFile = findFieldValue(zipAccess, zipAccess.javaClass) { field -> field.type == File::class.java } as? File
             ?: throw InvalidResourcePackException("Archive resource is unavailable")
 
         return archiveFile.toPath()
     }
 
     private fun getDirectoryPath(resources: PathPackResources): Path {
-        val rootField = PathPackResources::class.java.getDeclaredField("root")
-        rootField.isAccessible = true
-
-        return rootField.get(resources) as? Path
+        return findFieldValue(resources, PathPackResources::class.java) { field -> field.type == Path::class.java } as? Path
             ?: throw InvalidResourcePackException("Directory resource is unavailable")
+    }
+
+    private fun findFieldValue(instance: Any, type: Class<*>, predicate: (java.lang.reflect.Field) -> Boolean): Any? {
+        var currentType: Class<*>? = type
+        while (currentType != null) {
+            val field = currentType.declaredFields.firstOrNull(predicate)
+            if (field != null) {
+                field.isAccessible = true
+                return field.get(instance)
+            }
+            currentType = currentType.superclass
+        }
+        return null
     }
 }
