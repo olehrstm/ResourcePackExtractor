@@ -45,11 +45,12 @@ class ResourcePackSelectionList(
     @Environment(EnvType.CLIENT)
     inner class Entry(val pack: Pack) : ObjectSelectionList.Entry<Entry>() {
         override fun renderContent(graphics: GuiGraphics, mouseX: Int, mouseY: Int, hovered: Boolean, deltaTicks: Float) {
+            val textY = contentY + (contentHeight - minecraft.font.lineHeight) / 2
             graphics.drawString(
                 minecraft.font,
                 Component.literal(getSafeDisplayName(pack)),
                 contentX + 4,
-                contentY + 5,
+                textY,
                 -1
             )
         }

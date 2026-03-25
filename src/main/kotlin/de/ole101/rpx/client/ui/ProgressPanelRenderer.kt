@@ -5,10 +5,14 @@ import net.minecraft.client.gui.Font
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.network.chat.Component
 import net.minecraft.network.chat.Component.literal
+import net.minecraft.util.FormattedCharSequence
 import java.io.File
 import kotlin.math.roundToInt
 
 class ProgressPanelRenderer {
+    companion object {
+        private const val MAX_STATUS_LINES = 2
+    }
 
     fun render(
         graphics: GuiGraphics,
@@ -25,21 +29,27 @@ class ProgressPanelRenderer {
     ) {
         if (!isExtracting && !isCompleted && error == null) return
 
-        val panelTop = height - 70 - 46
         val panelLeft = width / 2 - 150
         val panelRight = width / 2 + 150
+        val contentWidth = panelRight - panelLeft - 20
+        val messageLines = (error ?: message)
+            ?.let { font.split(it, contentWidth) }
+            .orEmpty()
+            .take(MAX_STATUS_LINES)
+        val visibleLines: List<FormattedCharSequence> = messageLines
+        val panelHeight = if (visibleLines.size > 1) 58 else 46
+        val panelTop = height - 70 - panelHeight
 
         // background
-        graphics.fill(panelLeft, panelTop, panelRight, panelTop + 46, 0xAA000000.toInt())
+        graphics.fill(panelLeft, panelTop, panelRight, panelTop + panelHeight, 0xAA000000.toInt())
 
         val statusY = panelTop + 6
-        val progressBarY = panelTop + 20
+        val progressBarY = panelTop + 12 + visibleLines.size * font.lineHeight
         val percentY = progressBarY + 12
 
-        val displayMessage = error ?: message
         val textColor = if (error != null) 0xFFFF5555.toInt() else 0xFFFFFFFF.toInt()
-        if (displayMessage != null) {
-            graphics.drawCenteredString(font, displayMessage, width / 2, statusY, textColor)
+        visibleLines.forEachIndexed { index, line ->
+            graphics.drawCenteredString(font, line, width / 2, statusY + index * font.lineHeight, textColor)
         }
 
         if (totalBytes > 0) {
@@ -51,7 +61,7 @@ class ProgressPanelRenderer {
         }
 
         if (currentFile != null && error == null && !isCompleted) {
-            renderCurrentFile(graphics, font, width / 2, panelTop + 46 - 10, currentFile)
+            renderCurrentFile(graphics, font, width / 2, panelTop + panelHeight - 10, currentFile)
         }
     }
 

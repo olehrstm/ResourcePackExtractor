@@ -98,7 +98,6 @@ class ExtractPackScreen(private val parent: Screen) : Screen(translatable("rpx.p
     }
 
     override fun render(context: GuiGraphics, mouseX: Int, mouseY: Int, deltaTicks: Float) {
-        renderBackground(context, mouseX, mouseY, deltaTicks)
         super.render(context, mouseX, mouseY, deltaTicks)
         val uiState = extractionState.uiState.value
 
