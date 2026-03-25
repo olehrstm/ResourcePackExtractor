@@ -14,8 +14,12 @@ object Logger {
         logger.debug(message)
     }
 
-    fun warn(message: String) {
-        logger.warn(message)
+    fun warn(message: String, throwable: Throwable? = null) {
+        if (throwable != null) {
+            logger.warn(message, throwable)
+        } else {
+            logger.warn(message)
+        }
     }
 
     fun error(message: String, throwable: Throwable? = null) {

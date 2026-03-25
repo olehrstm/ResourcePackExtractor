@@ -20,7 +20,7 @@ public abstract class PackSelectionScreenMixin extends Screen {
     @Inject(method = "init", at = @At("RETURN"))
     private void addExtractButton(CallbackInfo callbackInfo) {
         Button.Builder builder = Button.builder(translatable("rpx.pack.extract"),
-                button -> this.minecraft.setScreen(new ExtractPackScreen(this.minecraft.screen))).size(98, 20);
+                button -> this.minecraft.setScreen(new ExtractPackScreen(this))).size(98, 20);
 
         addRenderableWidget(builder.pos(this.width - 98 - 5, 5).build());
     }

@@ -3,6 +3,7 @@ package de.ole101.rpx.client.ui
 import de.ole101.rpx.util.formatFileSize
 import net.minecraft.client.gui.Font
 import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.network.chat.Component
 import net.minecraft.network.chat.Component.literal
 import java.io.File
 import kotlin.math.roundToInt
@@ -19,8 +20,8 @@ class ProgressPanelRenderer {
         extractedBytes: Long,
         totalBytes: Long,
         currentFile: String?,
-        message: String?,
-        error: String?
+        message: Component?,
+        error: Component?
     ) {
         if (!isExtracting && !isCompleted && error == null) return
 
@@ -35,16 +36,17 @@ class ProgressPanelRenderer {
         val progressBarY = panelTop + 20
         val percentY = progressBarY + 12
 
-        val displayMessage = when {
-            error != null -> "Error: $error".take(60)
-            isCompleted -> message ?: "Completed"
-            else -> message ?: "Preparing..."
+        val displayMessage = error ?: message
+        val textColor = if (error != null) 0xFFFF5555.toInt() else 0xFFFFFFFF.toInt()
+        if (displayMessage != null) {
+            graphics.drawCenteredString(font, displayMessage, width / 2, statusY, textColor)
         }
-        val textColor = if (error != null) 0xFF5555FF.toInt() else 0xFFFFFFFF.toInt()
-        graphics.drawCenteredString(font, literal(displayMessage), width / 2, statusY, textColor)
 
         if (totalBytes > 0) {
             renderProgressBar(graphics, panelLeft, panelRight, progressBarY, extractedBytes, totalBytes)
+        }
+
+        if (totalBytes > 0 || extractedBytes > 0) {
             renderProgressText(graphics, font, width / 2, percentY, extractedBytes, totalBytes)
         }
 
