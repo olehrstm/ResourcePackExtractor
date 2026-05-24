@@ -7,7 +7,7 @@ import de.ole101.rpx.client.ui.ResourcePackSelectionList
 import de.ole101.rpx.util.ResourcePackUtil
 import net.fabricmc.api.EnvType
 import net.fabricmc.api.Environment
-import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.Button
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.network.chat.Component.translatable
@@ -97,13 +97,13 @@ class ExtractPackScreen(private val parent: Screen) : Screen(translatable("rpx.p
                 (uiState.isCompleted || uiState.error != null)
     }
 
-    override fun render(context: GuiGraphics, mouseX: Int, mouseY: Int, deltaTicks: Float) {
-        super.render(context, mouseX, mouseY, deltaTicks)
+    override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, deltaTicks: Float) {
+        super.extractRenderState(graphics, mouseX, mouseY, deltaTicks)
         val uiState = extractionState.uiState.value
 
-        context.drawCenteredString(font, title, width / 2, 15, -1)
+        graphics.centeredText(font, title, width / 2, 15, -1)
         progressRenderer.render(
-            context, font, width, height,
+            graphics, font, width, height,
             uiState.isExtracting,
             uiState.isCompleted,
             uiState.extractedBytes,

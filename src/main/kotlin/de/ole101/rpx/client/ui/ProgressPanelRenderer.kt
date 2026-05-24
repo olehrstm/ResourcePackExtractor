@@ -2,7 +2,7 @@ package de.ole101.rpx.client.ui
 
 import de.ole101.rpx.util.formatFileSize
 import net.minecraft.client.gui.Font
-import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.network.chat.Component
 import net.minecraft.network.chat.Component.literal
 import net.minecraft.util.FormattedCharSequence
@@ -15,7 +15,7 @@ class ProgressPanelRenderer {
     }
 
     fun render(
-        graphics: GuiGraphics,
+        graphics: GuiGraphicsExtractor,
         font: Font,
         width: Int,
         height: Int,
@@ -49,7 +49,7 @@ class ProgressPanelRenderer {
 
         val textColor = if (error != null) 0xFFFF5555.toInt() else 0xFFFFFFFF.toInt()
         visibleLines.forEachIndexed { index, line ->
-            graphics.drawCenteredString(font, line, width / 2, statusY + index * font.lineHeight, textColor)
+            graphics.centeredText(font, line, width / 2, statusY + index * font.lineHeight, textColor)
         }
 
         if (totalBytes > 0) {
@@ -66,7 +66,7 @@ class ProgressPanelRenderer {
     }
 
     private fun renderProgressBar(
-        graphics: GuiGraphics,
+        graphics: GuiGraphicsExtractor,
         panelLeft: Int,
         panelRight: Int,
         progressBarY: Int,
@@ -87,7 +87,7 @@ class ProgressPanelRenderer {
     }
 
     private fun renderProgressText(
-        graphics: GuiGraphics,
+        graphics: GuiGraphicsExtractor,
         font: Font,
         centerX: Int,
         y: Int,
@@ -100,11 +100,11 @@ class ProgressPanelRenderer {
         } else {
             formatFileSize(extractedBytes)
         }
-        graphics.drawCenteredString(font, literal(percentText), centerX, y, 0xA0FFFFFF.toInt())
+        graphics.centeredText(font, literal(percentText), centerX, y, 0xA0FFFFFF.toInt())
     }
 
     private fun renderCurrentFile(
-        graphics: GuiGraphics,
+        graphics: GuiGraphicsExtractor,
         font: Font,
         centerX: Int,
         y: Int,
@@ -113,6 +113,6 @@ class ProgressPanelRenderer {
         val separator = File.separatorChar
         val filename = currentFile.substringAfterLast(separator).substringAfterLast('/')
         val truncatedFilename = filename.take(40)
-        graphics.drawCenteredString(font, literal(truncatedFilename), centerX, y, 0x80FFFFFF.toInt())
+        graphics.centeredText(font, literal(truncatedFilename), centerX, y, 0x80FFFFFF.toInt())
     }
 }

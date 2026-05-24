@@ -1,27 +1,13 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     kotlin("jvm") version "2.3.21"
-    id("fabric-loom") version "1.16.2"
-    id("maven-publish")
+    id("net.fabricmc.fabric-loom")
+    `maven-publish`
 }
 
-version = project.property("mod_version") as String
-group = project.property("maven_group") as String
-
-base {
-    archivesName.set(project.property("archives_base_name") as String)
-}
-
-val targetJavaVersion = 21
-java {
-    toolchain.languageVersion = JavaLanguageVersion.of(targetJavaVersion)
-    // Loom will automatically attach sourcesJar to a RemapSourcesJar task and to the "build" task
-    // if it is present.
-    // If you remove this line, sources will not be generated.
-    withSourcesJar()
-}
+version = providers.gradleProperty("mod_version").get()
+group = providers.gradleProperty("maven_group").get()
 
 repositories {
     // Add repositories to retrieve artifacts from in here.
@@ -33,54 +19,68 @@ repositories {
 
 dependencies {
     // To change the versions see the gradle.properties file
-    minecraft("com.mojang:minecraft:${project.property("minecraft_version")}")
-    mappings(loom.officialMojangMappings())
-    modImplementation("net.fabricmc:fabric-loader:${project.property("loader_version")}")
-    modImplementation("net.fabricmc:fabric-language-kotlin:${project.property("kotlin_loader_version")}")
+    minecraft("com.mojang:minecraft:${providers.gradleProperty("minecraft_version").get()}")
 
-    modImplementation("net.fabricmc.fabric-api:fabric-api:${project.property("fabric_version")}")
+    implementation("net.fabricmc:fabric-loader:${providers.gradleProperty("loader_version").get()}")
+
+    // Fabric API. This is technically optional, but you probably want it anyway.
+    implementation("net.fabricmc.fabric-api:fabric-api:${providers.gradleProperty("fabric_api_version").get()}")
+    implementation("net.fabricmc:fabric-language-kotlin:${providers.gradleProperty("fabric_kotlin_version").get()}")
 }
 
 tasks.processResources {
-    inputs.property("version", project.version)
-    inputs.property("minecraft_version", project.property("minecraft_version"))
-    inputs.property("loader_version", project.property("loader_version"))
-    filteringCharset = "UTF-8"
+    val version = version
+    inputs.property("version", version)
+    val minecraftVersion = providers.gradleProperty("minecraft_version").get()
+    inputs.property("minecraft_version", minecraftVersion)
+    val loaderVersion = providers.gradleProperty("loader_version").get()
+    inputs.property("loader_version", loaderVersion)
+    val fabricKotlinVersion = providers.gradleProperty("fabric_kotlin_version").get()
+    inputs.property("fabric_kotlin_version", fabricKotlinVersion)
 
     filesMatching("fabric.mod.json") {
         expand(
-            "version" to project.version,
-            "minecraft_version" to project.property("minecraft_version") as String,
-            "loader_version" to project.property("loader_version") as String,
-            "kotlin_loader_version" to project.property("kotlin_loader_version") as String
+            "version" to version,
+            "minecraft_version" to minecraftVersion,
+            "loader_version" to loaderVersion,
+            "fabric_kotlin_version" to fabricKotlinVersion
         )
     }
 }
 
 tasks.withType<JavaCompile>().configureEach {
-    // ensure that the encoding is set to UTF-8, no matter what the system default is
-    // this fixes some edge cases with special characters not displaying correctly
-    // see http://yodaconditions.net/blog/fix-for-java-file-encoding-problems-with-gradle.html
-    // If Javadoc is generated, this must be specified in that task too.
-    options.encoding = "UTF-8"
-    options.release.set(targetJavaVersion)
+    options.release = 25
 }
 
-tasks.withType<KotlinCompile>().configureEach {
-    compilerOptions.jvmTarget.set(JvmTarget.fromTarget(targetJavaVersion.toString()))
+kotlin {
+    compilerOptions {
+        jvmTarget = JvmTarget.JVM_25
+    }
+}
+
+java {
+    // Loom will automatically attach sourcesJar to a RemapSourcesJar task and to the "build" task
+    // if it is present.
+    // If you remove this line, sources will not be generated.
+    withSourcesJar()
+
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
 }
 
 tasks.jar {
+    val projectName = project.name
+    inputs.property("projectName", projectName)
+
     from("LICENSE") {
-        rename { "${it}_${project.base.archivesName}" }
+        rename { "${it}_$projectName" }
     }
 }
 
 // configure the maven publication
 publishing {
     publications {
-        create<MavenPublication>("mavenJava") {
-            artifactId = project.property("archives_base_name") as String
+        register<MavenPublication>("mavenJava") {
             from(components["java"])
         }
     }

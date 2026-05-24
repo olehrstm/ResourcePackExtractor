@@ -4,7 +4,7 @@ import de.ole101.rpx.util.ResourcePackUtil.getSafeDisplayName
 import net.fabricmc.api.EnvType
 import net.fabricmc.api.Environment
 import net.minecraft.client.Minecraft
-import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.ObjectSelectionList
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.Component
@@ -44,9 +44,9 @@ class ResourcePackSelectionList(
 
     @Environment(EnvType.CLIENT)
     inner class Entry(val pack: Pack) : ObjectSelectionList.Entry<Entry>() {
-        override fun renderContent(graphics: GuiGraphics, mouseX: Int, mouseY: Int, hovered: Boolean, deltaTicks: Float) {
+        override fun extractContent(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, hovered: Boolean, deltaTicks: Float) {
             val textY = contentY + (contentHeight - minecraft.font.lineHeight) / 2
-            graphics.drawString(
+            graphics.text(
                 minecraft.font,
                 Component.literal(getSafeDisplayName(pack)),
                 contentX + 4,
