@@ -28,7 +28,7 @@ class ExtractionState {
                 is ExtractionEvent.Progress -> currentState.copy(
                     extractedBytes = event.extractedBytes,
                     currentFile = event.fileName,
-                    message = translatable("rpx.status.extracting", Component.literal(shorten(event.fileName))),
+                    message = translatable("rpx.status.extracting"),
                     error = null
                 )
 
@@ -63,6 +63,4 @@ class ExtractionState {
             translatable("rpx.status.completed", extractedEntries)
         }
     }
-
-    private fun shorten(path: String): String = path.substringAfterLast('/').substringAfterLast('\\').take(60)
 }
