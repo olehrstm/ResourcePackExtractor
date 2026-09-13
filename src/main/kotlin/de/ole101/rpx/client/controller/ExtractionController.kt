@@ -42,6 +42,7 @@ class ExtractionController(
         }
 
         lastExtractionDir = request.destination.toFile()
+        extractionState.updateFromEvent(ExtractionEvent.Started(0L))
         onStateChanged()
 
         extractionJob = scope.launch {

@@ -7,7 +7,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import net.minecraft.network.chat.Component
 import net.minecraft.network.chat.Component.translatable
-import kotlin.math.max
 
 class ExtractionState {
     private val _uiState = MutableStateFlow(ExtractionUiState())
@@ -29,7 +28,7 @@ class ExtractionState {
                 is ExtractionEvent.Progress -> currentState.copy(
                     extractedBytes = event.extractedBytes,
                     currentFile = event.fileName,
-                    message = translatable("rpx.status.extracting", Component.literal(shorten(event.fileName))),
+                    message = translatable("rpx.status.extracting"),
                     error = null
                 )
 
@@ -44,7 +43,7 @@ class ExtractionState {
                     isExtracting = false,
                     isCompleted = true,
                     extractedBytes = event.extractedBytes,
-                    totalBytes = max(currentState.totalBytes, event.extractedBytes),
+                    totalBytes = event.extractedBytes,
                     currentFile = null,
                     message = completedMessage(event.extractedEntries, event.skippedEntries),
                     error = null
@@ -64,6 +63,4 @@ class ExtractionState {
             translatable("rpx.status.completed", extractedEntries)
         }
     }
-
-    private fun shorten(path: String): String = path.substringAfterLast('/').substringAfterLast('\\').take(60)
 }

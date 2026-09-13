@@ -12,7 +12,6 @@ import kotlinx.coroutines.flow.flowOn
 import java.io.InputStream
 import java.nio.file.Files
 import java.nio.file.Path
-import java.util.zip.ZipEntry
 import java.util.zip.ZipFile
 import kotlin.io.path.exists
 import kotlin.io.path.isDirectory
@@ -32,12 +31,7 @@ object ExtractionService {
         prepareDestinationDirectory(destinationDirectory)
 
         ZipFile(sourceFile.toFile()).use { zipFile ->
-            val safeFileEntries = zipFile.entries().asSequence()
-                .filterNot(ZipEntry::isDirectory)
-                .filter { resolveDestinationPath(destinationDirectory, it.name) != null }
-                .toList()
-
-            emit(ExtractionEvent.Started(safeFileEntries.totalBytesOrUnknown { it.size }))
+            emit(ExtractionEvent.Started(0L))
 
             var extractedBytes = 0L
             var extractedEntries = 0
@@ -174,17 +168,5 @@ object ExtractionService {
         }
 
         return extractedBytes
-    }
-
-    private fun <T> Iterable<T>.totalBytesOrUnknown(selector: (T) -> Long): Long {
-        var total = 0L
-        for (element in this) {
-            val size = selector(element)
-            if (size < 0L) {
-                return 0L
-            }
-            total += size
-        }
-        return total
     }
 }
